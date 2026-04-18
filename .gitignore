@@ -1,0 +1,71 @@
+# 编译产物
+bin/
+build/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go 相关
+vendor/
+go.work
+go.work.sum
+*.prof
+*.cpu
+*.mem
+*.trace
+
+# 测试相关
+coverage/
+*.out
+*.test
+/test-results/
+
+# IDE 和编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.iml
+*.ipr
+*.iws
+.vs/
+*.sublime-project
+*.sublime-workspace
+
+# 配置文件
+configs/config.yaml
+configs/*local*.yaml
+*.env
+.env.*
+!*.env.example
+secrets/
+
+# 日志和数据
+*.log
+logs/
+data/
+*.sqlite
+*.db
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# 容器和编排
+docker-compose.override.yml
+*.pid
+*.sock
+
+# 其他
+*.tar.gz
+*.zip
+*.rar
+*.7z
+

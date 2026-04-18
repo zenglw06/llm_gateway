@@ -1,0 +1,97 @@
+package integration
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/zenglw/llm_gateway/internal/model"
+	"github.com/zenglw/llm_gateway/internal/plugin"
+	"github.com/zenglw/llm_gateway/internal/service"
+	"github.com/zenglw/llm_gateway/internal/storage/memory"
+)
+
+// 测试熔断自动恢复
+func TestCircuitBreakerAutoRecovery(t *testing.T) {
+	store := memory.NewStore()
+	pluginManager := plugin.NewManager()
+
+	// 注册一个错误插件
+	failingPlugin := plugin.NewTestPlugin("failing_plugin")
+	failingPlugin.ShouldErr = true
+	err := pluginManager.Register(failingPlugin)
+	assert.NoError(t, err)
+
+	quotaService := service.NewQuotaService(store)
+	router := service.NewLLMRouterService(pluginManager, nil, quotaService)
+
+	req := &model.ChatRequest{
+		Model: "gpt-3.5-turbo",
+		Messages: []model.Message{
+			{Role: "user", Content: "hello"},
+		},
+	}
+
+	// 调用多次，触发熔断
+	for i := 0; i < 10; i++ {
+		_, _ = router.ChatCompletion(context.Background(), req)
+	}
+	callCountAfterFail := failingPlugin.CallCount()
+	assert.LessOrEqual(t, callCountAfterFail, 5) // 触发熔断后不会再调用
+
+	// 修改插件为正常
+	failingPlugin.ShouldErr = false
+
+	// 等待恢复时间
+	time.Sleep(3500 * time.Millisecond)
+
+	// 再次调用，应该恢复
+	_, _ = router.ChatCompletion(context.Background(), req)
+	assert.Equal(t, callCountAfterFail+1, failingPlugin.CallCount())
+}
+
+// 测试高并发下插件稳定性
+func TestPluginConcurrency(t *testing.T) {
+	store := memory.NewStore()
+	pluginManager := plugin.NewManager()
+
+	// 注册多个插件
+	plugins := make([]*plugin.TestPlugin, 5)
+	for i := 0; i < 5; i++ {
+		plugins[i] = plugin.NewTestPlugin(string(rune('a' + i)))
+		plugins[i].SleepTime = 10 * time.Millisecond // 每个插件执行10ms
+		err := pluginManager.Register(plugins[i])
+		assert.NoError(t, err)
+	}
+
+	quotaService := service.NewQuotaService(store)
+	router := service.NewLLMRouterService(pluginManager, nil, quotaService)
+
+	// 并发调用100次
+	concurrency := 100
+	done := make(chan bool, concurrency)
+
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			req := &model.ChatRequest{
+				Model: "gpt-3.5-turbo",
+				Messages: []model.Message{
+					{Role: "user", Content: "hello"},
+				},
+			}
+			_, _ = router.ChatCompletion(context.Background(), req)
+			done <- true
+		}()
+	}
+
+	// 等待所有调用完成
+	for i := 0; i < concurrency; i++ {
+		<-done
+	}
+
+	// 每个插件都应该被调用了100次
+	for _, p := range plugins {
+		assert.Equal(t, concurrency, p.CallCount())
+	}
+}

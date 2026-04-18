@@ -1,0 +1,80 @@
+package integration
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/zenglw/llm_gateway/internal/model"
+	"github.com/zenglw/llm_gateway/internal/plugin"
+	"github.com/zenglw/llm_gateway/internal/service"
+	"github.com/zenglw/llm_gateway/internal/storage/memory"
+)
+
+// 测试插件故障不影响主服务
+func TestPluginFaultIsolation(t *testing.T) {
+	// 初始化依赖
+	store := memory.NewStore()
+	pluginManager := plugin.NewManager()
+
+	// 注册一个会panic的插件
+	badPlugin := plugin.NewTestPlugin("bad_plugin")
+	badPlugin.ShouldPanic = true
+	err := pluginManager.Register(badPlugin)
+	assert.NoError(t, err)
+
+	// 初始化服务
+	quotaService := service.NewQuotaService(store)
+	router := service.NewLLMRouterService(pluginManager, nil, quotaService)
+
+	// 调用服务，即使插件panic，也不应该崩溃
+	req := &model.ChatRequest{
+		Model: "gpt-3.5-turbo",
+		Messages: []model.Message{
+			{Role: "user", Content: "hello"},
+		},
+	}
+
+	// 即使插件出错，服务也应该正常返回（只是没有找到对应的LLM服务）
+	_, err = router.ChatCompletion(context.Background(), req)
+	// 这里会返回模型不支持的错误，这是正常的，因为我们没有注册LLM服务
+	// 关键是服务没有崩溃
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "model not supported")
+
+	// 插件确实被调用了一次
+	assert.Equal(t, 1, badPlugin.CallCount())
+}
+
+// 测试插件超时不影响主服务
+func TestPluginTimeoutIsolation(t *testing.T) {
+	store := memory.NewStore()
+	pluginManager := plugin.NewManager()
+
+	// 注册一个慢插件
+	slowPlugin := plugin.NewTestPlugin("slow_plugin")
+	slowPlugin.SleepTime = 2 * time.Second // 执行需要2秒
+	err := pluginManager.Register(slowPlugin)
+	assert.NoError(t, err)
+
+	quotaService := service.NewQuotaService(store)
+	router := service.NewLLMRouterService(pluginManager, nil, quotaService)
+
+	req := &model.ChatRequest{
+		Model: "gpt-3.5-turbo",
+		Messages: []model.Message{
+			{Role: "user", Content: "hello"},
+		},
+	}
+
+	// 插件超时，但是服务应该在1秒左右返回，而不是等待2秒
+	start := time.Now()
+	_, err = router.ChatCompletion(context.Background(), req)
+	duration := time.Since(start)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "model not supported")
+	assert.Less(t, duration, 1500*time.Millisecond) // 应该在1.5秒内返回，不会等待2秒
+	assert.Equal(t, 1, slowPlugin.CallCount())
+}
