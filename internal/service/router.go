@@ -15,6 +15,7 @@ type LLMRouterService struct {
 	llmServices   []llm.Service
 	quotaService  *QuotaService
 	executor      *plugin.PluginExecutor
+	lb            LoadBalancer
 }
 
 // NewLLMRouterService 创建LLM路由服务
@@ -24,6 +25,18 @@ func NewLLMRouterService(pluginManager *plugin.DefaultManager, llmServices []llm
 		llmServices:   llmServices,
 		quotaService:  quotaService,
 		executor:      plugin.NewPluginExecutor(),
+		lb:            NewRoundRobinLoadBalancer(), // 默认使用轮询负载均衡
+	}
+}
+
+// NewLLMRouterServiceWithLoadBalancer 使用指定负载均衡器创建LLM路由服务
+func NewLLMRouterServiceWithLoadBalancer(pluginManager *plugin.DefaultManager, llmServices []llm.Service, quotaService *QuotaService, lb LoadBalancer) *LLMRouterService {
+	return &LLMRouterService{
+		pluginManager: pluginManager,
+		llmServices:   llmServices,
+		quotaService:  quotaService,
+		executor:      plugin.NewPluginExecutor(),
+		lb:            lb,
 	}
 }
 
@@ -42,8 +55,16 @@ func (s *LLMRouterService) ChatCompletion(ctx context.Context, req *model.ChatRe
 	}
 
 	// 执行请求处理插件链
+	var err error
 	for _, p := range s.pluginManager.GetRequestPlugins() {
-		llmReq, _ = s.executor.ExecuteRequestPlugin(ctx, p, llmReq)
+		llmReq, err = s.executor.ExecuteRequestPlugin(ctx, p, llmReq)
+		if err != nil {
+			// 执行错误处理插件链
+			for _, ep := range s.pluginManager.GetErrorPlugins() {
+				err = s.executor.ExecuteErrorPlugin(ctx, ep, err)
+			}
+			return nil, err
+		}
 	}
 
 	// 检查配额
@@ -94,7 +115,14 @@ func (s *LLMRouterService) ChatCompletion(ctx context.Context, req *model.ChatRe
 
 	// 执行响应处理插件链
 	for _, p := range s.pluginManager.GetResponsePlugins() {
-		llmResp, _ = s.executor.ExecuteResponsePlugin(ctx, p, llmResp)
+		llmResp, err = s.executor.ExecuteResponsePlugin(ctx, p, llmResp)
+		if err != nil {
+			// 执行错误处理插件链
+			for _, ep := range s.pluginManager.GetErrorPlugins() {
+				err = s.executor.ExecuteErrorPlugin(ctx, ep, err)
+			}
+			return nil, err
+		}
 	}
 
 	// 转换回ChatResponse
@@ -132,8 +160,16 @@ func (s *LLMRouterService) ChatCompletionStream(ctx context.Context, req *model.
 	}
 
 	// 执行请求处理插件链
+	var err error
 	for _, p := range s.pluginManager.GetRequestPlugins() {
-		llmReq, _ = s.executor.ExecuteRequestPlugin(ctx, p, llmReq)
+		llmReq, err = s.executor.ExecuteRequestPlugin(ctx, p, llmReq)
+		if err != nil {
+			// 执行错误处理插件链
+			for _, ep := range s.pluginManager.GetErrorPlugins() {
+				err = s.executor.ExecuteErrorPlugin(ctx, ep, err)
+			}
+			return nil, err
+		}
 	}
 
 	// 检查配额
@@ -393,10 +429,14 @@ func (s *LLMRouterService) CompletionStream(ctx context.Context, req *model.Comp
 
 // findServiceForModel 查找支持指定模型的服务
 func (s *LLMRouterService) findServiceForModel(model string) (llm.Service, error) {
+	var supportedServices []llm.Service
 	for _, service := range s.llmServices {
 		if service.SupportsModel(model) {
-			return service, nil
+			supportedServices = append(supportedServices, service)
 		}
 	}
-	return nil, errors.New(errors.ErrCodeModelNotSupported, "model not supported")
+	if len(supportedServices) == 0 {
+		return nil, errors.New(errors.ErrCodeModelNotSupported, "model not supported")
+	}
+	return s.lb.Select(supportedServices), nil
 }
