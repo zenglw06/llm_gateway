@@ -12,16 +12,16 @@ import (
 
 // 熔断状态
 const (
-	circuitClosed = iota // 关闭状态，正常调用
-	circuitOpen          // 打开状态，禁止调用
-	circuitHalfOpen      // 半开状态，尝试调用
+	circuitClosed   = iota // 关闭状态，正常调用
+	circuitOpen            // 打开状态，禁止调用
+	circuitHalfOpen        // 半开状态，尝试调用
 )
 
 // 默认配置
 const (
-	defaultTimeout     = 5 * time.Second  // 默认超时时间
-	defaultFailureRate = 0.5              // 默认失败率阈值
-	defaultWindowSize  = 10               // 默认统计窗口大小
+	defaultTimeout      = 5 * time.Second  // 默认超时时间
+	defaultFailureRate  = 0.5              // 默认失败率阈值
+	defaultWindowSize   = 10               // 默认统计窗口大小
 	defaultRecoveryTime = 30 * time.Second // 默认恢复时间
 )
 
@@ -33,9 +33,9 @@ type PluginExecutor struct {
 	recoveryTime time.Duration
 
 	mu           sync.RWMutex
-	circuitState map[string]int           // 每个插件的熔断状态
-	failureCount map[string]int           // 每个插件的失败计数
-	lastFailure  map[string]time.Time     // 每个插件的最后失败时间
+	circuitState map[string]int       // 每个插件的熔断状态
+	failureCount map[string]int       // 每个插件的失败计数
+	lastFailure  map[string]time.Time // 每个插件的最后失败时间
 }
 
 // NewPluginExecutor 创建默认插件执行器
@@ -216,7 +216,7 @@ func (e *PluginExecutor) ExecuteResponsePlugin(ctx context.Context, p ResponsePl
 	// 异步执行插件
 	resultChan := make(chan struct {
 		resp *model.LLMResponse
-		err error
+		err  error
 	}, 1)
 
 	go func() {
@@ -225,14 +225,14 @@ func (e *PluginExecutor) ExecuteResponsePlugin(ctx context.Context, p ResponsePl
 				logger.Errorf("Plugin %s panicked: %v", pluginName, r)
 				resultChan <- struct {
 					resp *model.LLMResponse
-					err error
+					err  error
 				}{resp, fmt.Errorf("plugin panicked: %v", r)}
 			}
 		}()
 		resp, err := p.HandleResponse(timeoutCtx, resp)
 		resultChan <- struct {
 			resp *model.LLMResponse
-			err error
+			err  error
 		}{resp, err}
 	}()
 
