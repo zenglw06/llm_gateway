@@ -10,7 +10,7 @@ COPY . .
 RUN CGO_ENABLED=0 go build -ldflags "-s -w" -o llm-gateway ./cmd/gateway
 
 # 运行阶段
-FROM alpine:3.20
+FROM alpine:3.23
 
 WORKDIR /app
 
