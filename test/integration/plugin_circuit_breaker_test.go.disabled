@@ -28,7 +28,7 @@ func TestCircuitBreakerAutoRecovery(t *testing.T) {
 
 	req := &model.ChatRequest{
 		Model: "gpt-3.5-turbo",
-		Messages: []model.Message{
+		Messages: []model.ChatMessage{
 			{Role: "user", Content: "hello"},
 		},
 	}
@@ -76,7 +76,7 @@ func TestPluginConcurrency(t *testing.T) {
 		go func() {
 			req := &model.ChatRequest{
 				Model: "gpt-3.5-turbo",
-				Messages: []model.Message{
+				Messages: []model.ChatMessage{
 					{Role: "user", Content: "hello"},
 				},
 			}

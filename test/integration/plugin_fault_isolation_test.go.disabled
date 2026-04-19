@@ -31,7 +31,7 @@ func TestPluginFaultIsolation(t *testing.T) {
 	// 调用服务，即使插件panic，也不应该崩溃
 	req := &model.ChatRequest{
 		Model: "gpt-3.5-turbo",
-		Messages: []model.Message{
+		Messages: []model.ChatMessage{
 			{Role: "user", Content: "hello"},
 		},
 	}
@@ -63,7 +63,7 @@ func TestPluginTimeoutIsolation(t *testing.T) {
 
 	req := &model.ChatRequest{
 		Model: "gpt-3.5-turbo",
-		Messages: []model.Message{
+		Messages: []model.ChatMessage{
 			{Role: "user", Content: "hello"},
 		},
 	}

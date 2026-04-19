@@ -1,0 +1,74 @@
+groups:
+- name: llm-gateway
+  rules:
+  - alert: HighErrorRate
+    expr: sum(rate(llm_gateway_requests_total{status!="200"}[5m])) / sum(rate(llm_gateway_requests_total[5m])) * 100 > 5
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "高错误率 (实例 {{ $labels.instance }})"
+      description: "错误率超过 5%，当前值：{{ $value | humanizePercentage }}%。"
+
+  - alert: HighErrorRateCritical
+    expr: sum(rate(llm_gateway_requests_total{status!="200"}[5m])) / sum(rate(llm_gateway_requests_total[5m])) * 100 > 20
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "严重高错误率 (实例 {{ $labels.instance }})"
+      description: "错误率超过 20%，当前值：{{ $value | humanizePercentage }}%。"
+
+  - alert: HighLatency
+    expr: histogram_quantile(0.95, sum(rate(llm_gateway_request_duration_seconds_bucket[5m])) by (le, instance)) > 5
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "请求延迟过高 (实例 {{ $labels.instance }})"
+      description: "p95 延迟超过 5秒，当前值：{{ $value }}s。"
+
+  - alert: HighLatencyCritical
+    expr: histogram_quantile(0.95, sum(rate(llm_gateway_request_duration_seconds_bucket[5m])) by (le, instance)) > 30
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "请求延迟严重过高 (实例 {{ $labels.instance }})"
+      description: "p95 延迟超过 30秒，当前值：{{ $value }}s。"
+
+  - alert: HighRateLimit
+    expr: sum(rate(llm_gateway_rate_limit_total[5m])) > 100
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "限流次数过高 (实例 {{ $labels.instance }})"
+      description: "每分钟限流次数超过 100，当前值：{{ $value }}。"
+
+  - alert: ServiceDown
+    expr: up{job="llm-gateway"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "服务宕机 (实例 {{ $labels.instance }})"
+      description: "实例 {{ $labels.instance }} 已经1分钟没有响应。"
+
+  - alert: HighCpuUsage
+    expr: 100 - (avg by(instance) (irate(process_cpu_seconds_total{job="llm-gateway"}[1m])) * 100) > 80
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "CPU使用率过高 (实例 {{ $labels.instance }})"
+      description: "CPU使用率超过 80%，当前值：{{ $value }}%。"
+
+  - alert: HighMemoryUsage
+    expr: process_resident_memory_bytes{job="llm-gateway"} / 1024 / 1024 > 2048
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "内存使用率过高 (实例 {{ $labels.instance }})"
+      description: "内存使用超过 2GB，当前值：{{ $value | humanizeBytes }}。"

@@ -28,9 +28,9 @@ func (k LimitKey) String() string {
 type Plugin struct {
 	config     config.RateLimitPluginConfig
 	strategies map[string]strategies.RateLimitStrategy // 策略注册表
-	limiters   sync.Map                     // key: LimitKey.String() -> *limiterEntry
-	mu         sync.RWMutex                 // 配置更新锁
-	lastClean  time.Time                    // 上次清理时间
+	limiters   sync.Map                                // key: LimitKey.String() -> *limiterEntry
+	mu         sync.RWMutex                            // 配置更新锁
+	lastClean  time.Time                               // 上次清理时间
 }
 
 // limiterEntry 限流器条目，包含限流器和对应的规则

@@ -1,0 +1,133 @@
+# LLM Gateway 配置示例
+# 复制此文件为config.yaml，修改为你自己的配置
+
+# 服务配置
+server:
+  port: 8080                  # 服务监听端口
+  mode: release               # 运行模式：debug/release/test
+  read_timeout: 60            # 请求读取超时时间（秒）
+  write_timeout: 120          # 响应写入超时时间（秒），流式响应建议设置大一些
+  enable_pprof: false         # 是否开启pprof性能分析端点
+  enable_metrics: true        # 是否开启/metrics端点
+
+# 日志配置
+log:
+  level: info                 # 日志级别：debug/info/warn/error/fatal
+  format: json                # 日志格式：json/text
+  output_path: stdout         # 输出路径：stdout/stderr/文件路径
+  debug: false                # 是否开启Debug模式，打印调用栈信息
+
+# 认证配置
+auth:
+  jwt_secret: "your-strong-jwt-secret-key-here" # JWT签名密钥，请务必修改为随机字符串
+  jwt_expire: 168             # API Key默认过期时间（小时，默认7天）
+  enable_api_key_auth: true   # 是否开启API Key认证
+  allow_anonymous: false      # 是否允许匿名访问，生产环境请勿开启
+
+# LLM服务配置
+llm:
+  default_service: "openai"   # 默认使用的LLM服务，当模型不匹配时使用
+  connect_timeout: 10         # 连接LLM服务的超时时间（秒）
+  response_header_timeout: 30 # 等待LLM响应头的超时时间（秒）
+
+  services:                   # LLM服务列表，可以配置多个
+    openai:
+      type: openai
+      api_key: "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" # 你的OpenAI API Key
+      base_url: "https://api.openai.com/v1" # 可以配置为反向代理地址，比如Cloudflare的代理
+      timeout: 120
+      max_retries: 2
+      proxy: ""               # 代理地址，比如：http://127.0.0.1:7890
+      enabled: true
+      weight: 100             # 负载均衡权重
+
+    claude:
+      type: claude
+      api_key: "sk-ant-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" # 你的Anthropic API Key
+      base_url: "https://api.anthropic.com/v1"
+      timeout: 120
+      max_retries: 2
+      enabled: false
+      weight: 100
+
+    deepseek:
+      type: deepseek
+      api_key: "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" # 你的DeepSeek API Key
+      base_url: "https://api.deepseek.com/v1"
+      timeout: 120
+      max_retries: 2
+      enabled: false
+      weight: 100
+
+# 插件配置
+plugin:
+  enabled_plugins:            # 启用的插件列表，按顺序执行
+    - auth
+    - ratelimit
+    - logging
+    - metrics
+    # - tracing
+    # - cache
+
+  # 认证插件配置
+  auth:
+    enabled: true
+    cache_ttl: 60             # API Key缓存时间（秒）
+    enable_ip_whitelist: false # 是否启用IP白名单验证
+
+  # 限流插件配置
+  ratelimit:
+    enabled: true
+    default:
+      strategy: token_bucket  # 限流算法：token_bucket/fixed_window/sliding_window
+      limit_type: request     # 限流类型：request/token
+      limit: 100              # 时间窗口内的最大请求数/Token数
+      period: 1s              # 时间窗口
+      burst: 200              # 令牌桶突发容量
+    rules:                    # 自定义限流规则，可以按用户、模型配置
+      - match:
+          user_id: "vip-user"
+        limit: 1000
+        period: 1m
+        priority: 10
+
+  # 日志插件配置
+  logging:
+    enabled: true
+    log_request: true         # 是否记录请求内容
+    log_response: false       # 是否记录响应内容，生产环境不建议开启，可能包含敏感数据
+    max_body_size: 10240      # 最大记录的请求/响应体大小（字节）
+
+  # 监控插件配置
+  metrics:
+    enabled: true
+    path: "/metrics"
+    enable_go_metrics: true   # 是否收集Go运行时指标
+    enable_process_metrics: true # 是否收集进程指标
+
+  # 链路追踪插件配置
+  tracing:
+    enabled: false
+    endpoint: "http://jaeger:14268/api/traces" # Jaeger/OTLP收集端点
+    service_name: "llm-gateway"
+    sampler_type: "probabilistic" # 采样类型：always/never/probabilistic
+    sampler_param: 0.1        # 采样率，0.1表示10%的请求被采样
+
+# 存储配置
+storage:
+  type: memory                # 存储类型：memory（单实例）/redis（分布式）
+  prefix: "llm_gateway:"
+
+  # Redis配置（type=redis时需要）
+  redis:
+    addr: "localhost:6379"
+    password: ""
+    db: 0
+    pool_size: 100
+
+# 路由配置
+router:
+  enabled: true
+  default_strategy: "weighted_round_robin" # 负载均衡策略
+  enable_fallback: true       # 是否启用故障转移
+  max_fallback_retries: 2     # 最大重试次数

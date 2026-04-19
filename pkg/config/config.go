@@ -10,12 +10,12 @@ import (
 
 // Config 全局配置
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Log      logger.Config  `mapstructure:"log"`
-	LLM      LLMConfig      `mapstructure:"llm"`
-	Plugin   PluginConfig   `mapstructure:"plugin"`
-	Storage  StorageConfig  `mapstructure:"storage"`
-	Auth     AuthConfig     `mapstructure:"auth"`
+	Server  ServerConfig  `mapstructure:"server"`
+	Log     logger.Config `mapstructure:"log"`
+	LLM     LLMConfig     `mapstructure:"llm"`
+	Plugin  PluginConfig  `mapstructure:"plugin"`
+	Storage StorageConfig `mapstructure:"storage"`
+	Auth    AuthConfig    `mapstructure:"auth"`
 }
 
 // ServerConfig 服务配置
@@ -43,11 +43,11 @@ type LLMServiceConfig struct {
 
 // PluginConfig 插件配置
 type PluginConfig struct {
-	EnabledPlugins []string               `mapstructure:"enabled"`
-	Auth           AuthPluginConfig       `mapstructure:"auth"`
-	RateLimit      RateLimitPluginConfig  `mapstructure:"ratelimit"`
-	Metrics        MetricsPluginConfig    `mapstructure:"metrics"`
-	Logging        LoggingPluginConfig    `mapstructure:"logging"`
+	EnabledPlugins []string              `mapstructure:"enabled"`
+	Auth           AuthPluginConfig      `mapstructure:"auth"`
+	RateLimit      RateLimitPluginConfig `mapstructure:"ratelimit"`
+	Metrics        MetricsPluginConfig   `mapstructure:"metrics"`
+	Logging        LoggingPluginConfig   `mapstructure:"logging"`
 }
 
 // AuthPluginConfig 鉴权插件配置
@@ -58,22 +58,22 @@ type AuthPluginConfig struct {
 // LimitRule 限流规则
 type LimitRule struct {
 	ID        string        `json:"id" mapstructure:"id"`
-	UserID    string        `json:"user_id" mapstructure:"user_id"`   // 用户ID，*表示匹配所有用户
-	Model     string        `json:"model" mapstructure:"model"`       // 模型名称，*表示匹配所有模型
-	Strategy  string        `json:"strategy" mapstructure:"strategy"` // 策略类型：token_bucket, fixed_window, sliding_window
-	Limit     int64         `json:"limit" mapstructure:"limit"`       // 限流阈值
+	UserID    string        `json:"user_id" mapstructure:"user_id"`       // 用户ID，*表示匹配所有用户
+	Model     string        `json:"model" mapstructure:"model"`           // 模型名称，*表示匹配所有模型
+	Strategy  string        `json:"strategy" mapstructure:"strategy"`     // 策略类型：token_bucket, fixed_window, sliding_window
+	Limit     int64         `json:"limit" mapstructure:"limit"`           // 限流阈值
 	LimitType string        `json:"limit_type" mapstructure:"limit_type"` // 阈值类型：request, token, bandwidth
-	Period    time.Duration `json:"period" mapstructure:"period"`     // 时间窗口
-	Burst     int           `json:"burst" mapstructure:"burst"`       // 突发请求数（仅令牌桶策略）
-	Priority  int           `json:"priority" mapstructure:"priority"` // 优先级，数值越大优先级越高
+	Period    time.Duration `json:"period" mapstructure:"period"`         // 时间窗口
+	Burst     int           `json:"burst" mapstructure:"burst"`           // 突发请求数（仅令牌桶策略）
+	Priority  int           `json:"priority" mapstructure:"priority"`     // 优先级，数值越大优先级越高
 }
 
 // RateLimitPluginConfig 限流插件配置
 type RateLimitPluginConfig struct {
-	Enabled bool       `mapstructure:"enabled"`
-	Rate    int        `mapstructure:"rate"`  // 兼容旧配置，默认令牌桶速率
-	Burst   int        `mapstructure:"burst"` // 兼容旧配置，默认令牌桶突发
-	Default LimitRule  `mapstructure:"default"` // 默认规则
+	Enabled bool        `mapstructure:"enabled"`
+	Rate    int         `mapstructure:"rate"`    // 兼容旧配置，默认令牌桶速率
+	Burst   int         `mapstructure:"burst"`   // 兼容旧配置，默认令牌桶突发
+	Default LimitRule   `mapstructure:"default"` // 默认规则
 	Rules   []LimitRule `mapstructure:"rules"`   // 自定义规则列表
 }
 
@@ -85,9 +85,9 @@ type MetricsPluginConfig struct {
 
 // LoggingPluginConfig 日志插件配置
 type LoggingPluginConfig struct {
-	Enabled      bool `mapstructure:"enabled"`
-	LogRequest   bool `mapstructure:"log_request"`
-	LogResponse  bool `mapstructure:"log_response"`
+	Enabled     bool `mapstructure:"enabled"`
+	LogRequest  bool `mapstructure:"log_request"`
+	LogResponse bool `mapstructure:"log_response"`
 }
 
 // StorageConfig 存储配置

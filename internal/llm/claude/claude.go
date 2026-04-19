@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zenglw/llm_gateway/internal/model"
 	"github.com/zenglw/llm_gateway/internal/llm"
+	"github.com/zenglw/llm_gateway/internal/model"
 )
 
 // Service Claude服务实现
@@ -113,7 +113,7 @@ func (s *Service) ChatCompletionStream(ctx context.Context, req *model.ChatReque
 				{
 					Index: 0,
 					Delta: model.ChatMessage{
-						Role: "assistant",
+						Role:    "assistant",
 						Content: "hello",
 					},
 					FinishReason: nil,
@@ -145,8 +145,8 @@ func (s *Service) ChatCompletionStream(ctx context.Context, req *model.ChatReque
 			Model:   req.Model,
 			Choices: []model.StreamChoice{
 				{
-					Index: 0,
-					Delta: model.ChatMessage{},
+					Index:        0,
+					Delta:        model.ChatMessage{},
 					FinishReason: &finishReason,
 				},
 			},
@@ -240,9 +240,9 @@ func scanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 func Register() {
 	llm.Register("claude", func(cfg *llm.Config) (llm.Service, error) {
 		return NewService(&Config{
-			APIKey:  cfg.APIKey,
-			BaseURL: cfg.BaseURL,
-			Timeout: cfg.Timeout,
+			APIKey:     cfg.APIKey,
+			BaseURL:    cfg.BaseURL,
+			Timeout:    cfg.Timeout,
 			MaxRetries: cfg.MaxRetries,
 		}), nil
 	})
