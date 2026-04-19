@@ -18,7 +18,7 @@ import (
 	"github.com/zenglw/llm_gateway/internal/plugin/metrics"
 	"github.com/zenglw/llm_gateway/internal/plugin/ratelimit"
 	"github.com/zenglw/llm_gateway/internal/service"
-	"github.com/zenglw/llm_gateway/internal/storage/memory"
+	"github.com/zenglw/llm_gateway/internal/storage"
 	"github.com/zenglw/llm_gateway/pkg/config"
 	"github.com/zenglw/llm_gateway/pkg/logger"
 )
@@ -58,8 +58,11 @@ func main() {
 	deepseek.Register()
 
 	// 初始化存储
-	store := memory.NewStore()
-	logger.Infof("Storage initialized")
+	store, err := storage.NewStore(cfg.Storage)
+	if err != nil {
+		logger.Fatalf("Failed to init storage: %v", err)
+	}
+	logger.Infof("Storage initialized, type: %s", cfg.Storage.Type)
 
 	// 初始化插件管理器
 	pluginManager := plugin.NewManager()

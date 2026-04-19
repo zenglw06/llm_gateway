@@ -154,8 +154,24 @@ func (p *Plugin) HandleRequest(ctx context.Context, req *model.LLMRequest) (*mod
 	limiter := p.getOrCreateLimiter(key, rule)
 
 	// 检查是否允许请求
-	// TODO: 支持根据LimitType计算不同的n值（如token数、流量大小）
-	if !limiter.Allow() {
+	var n int64 = 1
+	switch rule.LimitType {
+	case "token":
+		// 根据请求的max_tokens计算，默认按1000token计算
+		if req.MaxTokens > 0 {
+			n = int64(req.MaxTokens)
+		} else {
+			n = 1000
+		}
+	case "bandwidth":
+		// 后续实现按流量限流
+		n = 1
+	default:
+		// request类型，默认1
+		n = 1
+	}
+
+	if !limiter.AllowN(int(n)) {
 		return nil, errors.New(errors.ErrCodeTooManyRequests, "too many requests")
 	}
 
