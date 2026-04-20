@@ -48,6 +48,7 @@ type PluginConfig struct {
 	RateLimit      RateLimitPluginConfig `mapstructure:"ratelimit"`
 	Metrics        MetricsPluginConfig   `mapstructure:"metrics"`
 	Logging        LoggingPluginConfig   `mapstructure:"logging"`
+	Cache          CachePluginConfig     `mapstructure:"cache"`
 }
 
 // AuthPluginConfig 鉴权插件配置
@@ -88,6 +89,16 @@ type LoggingPluginConfig struct {
 	Enabled     bool `mapstructure:"enabled"`
 	LogRequest  bool `mapstructure:"log_request"`
 	LogResponse bool `mapstructure:"log_response"`
+}
+
+// CachePluginConfig 缓存插件配置
+type CachePluginConfig struct {
+	Enabled   bool     `mapstructure:"enabled"`
+	TTL       int      `mapstructure:"ttl"`       // 缓存过期时间，单位秒，默认3600
+	MaxSize   int      `mapstructure:"max_size"`  // 最大缓存条目数，默认10000
+	Type      string   `mapstructure:"type"`      // 缓存类型：memory/redis，默认memory
+	Prefix    string   `mapstructure:"prefix"`    // 缓存Key前缀，默认llm_gateway:cache
+	ModelSkip []string `mapstructure:"model_skip"` // 不需要缓存的模型列表
 }
 
 // StorageConfig 存储配置
