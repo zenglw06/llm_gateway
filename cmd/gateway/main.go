@@ -14,6 +14,7 @@ import (
 	"github.com/zenglw/llm_gateway/internal/llm/openai"
 	"github.com/zenglw/llm_gateway/internal/plugin"
 	"github.com/zenglw/llm_gateway/internal/plugin/auth"
+	"github.com/zenglw/llm_gateway/internal/plugin/cache"
 	"github.com/zenglw/llm_gateway/internal/plugin/logging"
 	"github.com/zenglw/llm_gateway/internal/plugin/metrics"
 	"github.com/zenglw/llm_gateway/internal/plugin/ratelimit"
@@ -80,6 +81,9 @@ func main() {
 	metricsPlugin := metrics.NewPlugin()
 	pluginManager.Register(metricsPlugin)
 
+	cachePlugin := cache.NewPlugin(cfg.Storage)
+	pluginManager.Register(cachePlugin)
+
 	// 初始化插件
 	pluginConfig := make(map[string]interface{})
 	pluginConfig["auth"] = map[string]interface{}{
@@ -97,6 +101,14 @@ func main() {
 	pluginConfig["metrics"] = map[string]interface{}{
 		"enabled": cfg.Plugin.Metrics.Enabled,
 		"path":    cfg.Plugin.Metrics.Path,
+	}
+	pluginConfig["cache"] = map[string]interface{}{
+		"enabled":    cfg.Plugin.Cache.Enabled,
+		"ttl":        cfg.Plugin.Cache.TTL,
+		"max_size":   cfg.Plugin.Cache.MaxSize,
+		"type":       cfg.Plugin.Cache.Type,
+		"prefix":     cfg.Plugin.Cache.Prefix,
+		"model_skip": cfg.Plugin.Cache.ModelSkip,
 	}
 
 	if err := pluginManager.InitAll(pluginConfig); err != nil {

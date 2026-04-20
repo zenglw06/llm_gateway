@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"math/big"
 )
 
@@ -41,4 +42,13 @@ func Contains(slice []string, item string) bool {
 // Ptr 返回指针
 func Ptr[T any](v T) *T {
 	return &v
+}
+
+// MapToStruct map转换为struct
+func MapToStruct(m map[string]interface{}, s interface{}) error {
+	data, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, s)
 }

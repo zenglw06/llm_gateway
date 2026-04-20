@@ -1,8 +1,11 @@
 package apiserver
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -16,15 +19,30 @@ type Handler struct {
 	llmRouter     *service.LLMRouterService
 	apiKeyService *service.APIKeyService
 	quotaService  *service.QuotaService
+	batchService  *service.BatchService
+	taskService   *service.TaskService
 }
 
 // NewHandler 创建API处理器
 func NewHandler(llmRouter *service.LLMRouterService, apiKeyService *service.APIKeyService, quotaService *service.QuotaService) *Handler {
+	batchService := service.NewBatchService(llmRouter)
+	taskService := service.NewTaskService(llmRouter, batchService, 10)
 	return &Handler{
 		llmRouter:     llmRouter,
 		apiKeyService: apiKeyService,
 		quotaService:  quotaService,
+		batchService:  batchService,
+		taskService:   taskService,
 	}
+}
+
+// 处理请求头，添加上下文参数
+func addHeadersToContext(c *gin.Context) context.Context {
+	ctx := c.Request.Context()
+	// 缓存刷新参数
+	cacheRefresh := strings.ToLower(c.GetHeader("X-Cache-Refresh")) == "true"
+	ctx = context.WithValue(ctx, "X-Cache-Refresh", cacheRefresh)
+	return ctx
 }
 
 // ChatCompletion 聊天补全接口
@@ -35,9 +53,12 @@ func (h *Handler) ChatCompletion(c *gin.Context) {
 		return
 	}
 
+	// 添加请求头参数到上下文
+	ctx := addHeadersToContext(c)
+
 	// 处理流式请求
 	if req.Stream {
-		stream, err := h.llmRouter.ChatCompletionStream(c.Request.Context(), &req)
+		stream, err := h.llmRouter.ChatCompletionStream(ctx, &req)
 		if err != nil {
 			c.Error(err)
 			return
@@ -68,10 +89,15 @@ func (h *Handler) ChatCompletion(c *gin.Context) {
 	}
 
 	// 普通请求
-	resp, err := h.llmRouter.ChatCompletion(c.Request.Context(), &req)
+	resp, err := h.llmRouter.ChatCompletion(ctx, &req)
 	if err != nil {
 		c.Error(err)
 		return
+	}
+
+	// 添加缓存命中响应头
+	if _, ok := ctx.Value("cached_response").(*model.LLMResponse); ok {
+		c.Header("X-Cache-Hit", "true")
 	}
 
 	c.JSON(http.StatusOK, resp)
@@ -85,9 +111,12 @@ func (h *Handler) Completion(c *gin.Context) {
 		return
 	}
 
+	// 添加请求头参数到上下文
+	ctx := addHeadersToContext(c)
+
 	// 处理流式请求
 	if req.Stream {
-		stream, err := h.llmRouter.CompletionStream(c.Request.Context(), &req)
+		stream, err := h.llmRouter.CompletionStream(ctx, &req)
 		if err != nil {
 			c.Error(err)
 			return
@@ -118,10 +147,15 @@ func (h *Handler) Completion(c *gin.Context) {
 	}
 
 	// 普通请求
-	resp, err := h.llmRouter.Completion(c.Request.Context(), &req)
+	resp, err := h.llmRouter.Completion(ctx, &req)
 	if err != nil {
 		c.Error(err)
 		return
+	}
+
+	// 添加缓存命中响应头
+	if _, ok := ctx.Value("cached_response").(*model.LLMResponse); ok {
+		c.Header("X-Cache-Hit", "true")
 	}
 
 	c.JSON(http.StatusOK, resp)
@@ -268,6 +302,102 @@ func (h *Handler) ResetUserQuota(c *gin.Context) {
 	}
 
 	if err := h.quotaService.ResetUserQuota(c.Request.Context(), userID); err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// BatchCompletion 批量补全接口
+func (h *Handler) BatchCompletion(c *gin.Context) {
+	var req model.BatchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(errors.Wrap(errors.ErrCodeInvalidParams, "invalid request body", err))
+		return
+	}
+
+	// 添加请求头参数到上下文
+	ctx := addHeadersToContext(c)
+
+	// 处理批量请求
+	resp, err := h.batchService.ProcessBatch(ctx, &req)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+// CreateAsyncTask 创建异步任务
+func (h *Handler) CreateAsyncTask(c *gin.Context) {
+	var req model.CreateAsyncTaskRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.Error(errors.Wrap(errors.ErrCodeInvalidParams, "invalid request body", err))
+		return
+	}
+
+	task, err := h.taskService.CreateTask(c.Request.Context(), &req)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusAccepted, model.AsyncTaskResponse{
+		TaskID:    task.ID,
+		Object:    "async_task",
+		CreatedAt: time.Unix(task.CreatedAt, 0),
+		Status:    string(task.Status),
+		Message:   "Task created successfully, you can query status via /v1/tasks/{task_id}",
+	})
+}
+
+// GetTask 查询任务状态
+func (h *Handler) GetTask(c *gin.Context) {
+	taskID := c.Param("task_id")
+	if taskID == "" {
+		c.Error(errors.New(errors.ErrCodeInvalidParams, "missing task id"))
+		return
+	}
+
+	task, err := h.taskService.GetTask(c.Request.Context(), taskID)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, model.GetTaskResponse{
+		Task: *task,
+	})
+}
+
+// ListTasks 查询任务列表
+func (h *Handler) ListTasks(c *gin.Context) {
+	var req model.ListTasksRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.Error(errors.Wrap(errors.ErrCodeInvalidParams, "invalid query params", err))
+		return
+	}
+
+	resp, err := h.taskService.ListTasks(c.Request.Context(), &req)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+// CancelTask 取消任务
+func (h *Handler) CancelTask(c *gin.Context) {
+	taskID := c.Param("task_id")
+	if taskID == "" {
+		c.Error(errors.New(errors.ErrCodeInvalidParams, "missing task id"))
+		return
+	}
+
+	if err := h.taskService.CancelTask(c.Request.Context(), taskID); err != nil {
 		c.Error(err)
 		return
 	}

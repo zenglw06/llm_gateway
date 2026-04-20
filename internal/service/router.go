@@ -67,6 +67,27 @@ func (s *LLMRouterService) ChatCompletion(ctx context.Context, req *model.ChatRe
 		}
 	}
 
+	// 检查是否有缓存命中
+	if cachedResp, ok := ctx.Value("cached_response").(*model.LLMResponse); ok {
+		// 转换为ChatResponse直接返回
+		chatResp := &model.ChatResponse{
+			ID:      cachedResp.ID,
+			Object:  cachedResp.Object,
+			Created: cachedResp.Created,
+			Model:   cachedResp.Model,
+			Choices: make([]model.ChatChoice, len(cachedResp.Choices)),
+			Usage:   cachedResp.Usage,
+		}
+		for i, c := range cachedResp.Choices {
+			chatResp.Choices[i] = model.ChatChoice{
+				Index:        c.Index,
+				Message:      c.Message,
+				FinishReason: c.FinishReason,
+			}
+		}
+		return chatResp, nil
+	}
+
 	// 检查配额
 	if _, err := s.quotaService.ConsumeQuota(ctx, llmReq.UserID, 1); err != nil {
 		// 执行错误处理插件链
@@ -288,6 +309,30 @@ func (s *LLMRouterService) Completion(ctx context.Context, req *model.Completion
 		}
 	}
 
+	// 检查是否有缓存命中
+	if cachedResp, ok := ctx.Value("cached_response").(*model.LLMResponse); ok {
+		// 转换为CompletionResponse直接返回
+		completionResp := &model.CompletionResponse{
+			ID:      cachedResp.ID,
+			Object:  cachedResp.Object,
+			Created: cachedResp.Created,
+			Model:   cachedResp.Model,
+			Choices: make([]model.CompletionChoice, len(cachedResp.Choices)),
+			Usage:   cachedResp.Usage,
+		}
+		// 文本补全的结果在之前的处理中已经保存到completionTexts变量？不对，需要看一下原有逻辑
+		// 哦，原有逻辑是在调用LLM之后保存completionTexts，但是缓存的响应中没有这个，所以需要处理
+		// 这里我们假设缓存的响应中Choices的Text字段已经包含了结果
+		for i, c := range cachedResp.Choices {
+			completionResp.Choices[i] = model.CompletionChoice{
+				Index:        c.Index,
+				Text:         c.Text,
+				FinishReason: c.FinishReason,
+			}
+		}
+		return completionResp, nil
+	}
+
 	// 检查配额
 	if _, err := s.quotaService.ConsumeQuota(ctx, llmReq.UserID, 1); err != nil {
 		// 执行错误处理插件链
@@ -331,6 +376,7 @@ func (s *LLMRouterService) Completion(ctx context.Context, req *model.Completion
 	for i, c := range resp.Choices {
 		llmResp.Choices[i] = model.Choice{
 			Index:        c.Index,
+			Text:         c.Text,
 			FinishReason: c.FinishReason,
 		}
 		completionTexts[i] = c.Text

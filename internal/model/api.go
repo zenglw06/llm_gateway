@@ -44,6 +44,7 @@ type Choice struct {
 	Index        int         `json:"index"`
 	Message      ChatMessage `json:"message,omitempty"`
 	Delta        ChatMessage `json:"delta,omitempty"`
+	Text         string      `json:"text,omitempty"` // 文本补全结果
 	FinishReason string      `json:"finish_reason,omitempty"`
 }
 
