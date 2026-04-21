@@ -94,10 +94,10 @@ type LoggingPluginConfig struct {
 // CachePluginConfig 缓存插件配置
 type CachePluginConfig struct {
 	Enabled   bool     `mapstructure:"enabled"`
-	TTL       int      `mapstructure:"ttl"`       // 缓存过期时间，单位秒，默认3600
-	MaxSize   int      `mapstructure:"max_size"`  // 最大缓存条目数，默认10000
-	Type      string   `mapstructure:"type"`      // 缓存类型：memory/redis，默认memory
-	Prefix    string   `mapstructure:"prefix"`    // 缓存Key前缀，默认llm_gateway:cache
+	TTL       int      `mapstructure:"ttl"`        // 缓存过期时间，单位秒，默认3600
+	MaxSize   int      `mapstructure:"max_size"`   // 最大缓存条目数，默认10000
+	Type      string   `mapstructure:"type"`       // 缓存类型：memory/redis，默认memory
+	Prefix    string   `mapstructure:"prefix"`     // 缓存Key前缀，默认llm_gateway:cache
 	ModelSkip []string `mapstructure:"model_skip"` // 不需要缓存的模型列表
 }
 
