@@ -39,11 +39,11 @@ type CreateAsyncTaskRequest struct {
 
 // AsyncTaskResponse 异步任务响应
 type AsyncTaskResponse struct {
-	TaskID     string    `json:"task_id"`
-	Object     string    `json:"object"`
-	CreatedAt  time.Time `json:"created_at"`
-	Status     string    `json:"status"`
-	Message    string    `json:"message,omitempty"`
+	TaskID    string    `json:"task_id"`
+	Object    string    `json:"object"`
+	CreatedAt time.Time `json:"created_at"`
+	Status    string    `json:"status"`
+	Message   string    `json:"message,omitempty"`
 }
 
 // GetTaskResponse 获取任务响应
@@ -61,8 +61,8 @@ type ListTasksRequest struct {
 
 // ListTasksResponse 任务列表响应
 type ListTasksResponse struct {
-	Data  []Task `json:"data"`
-	Total int    `json:"total"`
-	Limit int    `json:"limit"`
-	Offset int   `json:"offset"`
+	Data   []Task `json:"data"`
+	Total  int    `json:"total"`
+	Limit  int    `json:"limit"`
+	Offset int    `json:"offset"`
 }

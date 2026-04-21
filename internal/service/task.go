@@ -13,14 +13,14 @@ import (
 
 // TaskService 异步任务服务
 type TaskService struct {
-	llmRouter   *LLMRouterService
-	batchService *BatchService
+	llmRouter       *LLMRouterService
+	batchService    *BatchService
 	callbackService *CallbackService
-	tasks       sync.Map // 任务存储，key: taskID, value: *model.Task
-	workerCount int      // 工作协程数
-	taskChan    chan *model.Task // 任务队列
-	ctx         context.Context
-	cancel      context.CancelFunc
+	tasks           sync.Map         // 任务存储，key: taskID, value: *model.Task
+	workerCount     int              // 工作协程数
+	taskChan        chan *model.Task // 任务队列
+	ctx             context.Context
+	cancel          context.CancelFunc
 }
 
 // NewTaskService 创建异步任务服务
@@ -30,13 +30,13 @@ func NewTaskService(llmRouter *LLMRouterService, batchService *BatchService, wor
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	ts := &TaskService{
-		llmRouter:   llmRouter,
-		batchService: batchService,
+		llmRouter:       llmRouter,
+		batchService:    batchService,
 		callbackService: NewCallbackService(),
-		workerCount: workerCount,
-		taskChan:    make(chan *model.Task, 1000), // 队列长度1000
-		ctx:         ctx,
-		cancel:      cancel,
+		workerCount:     workerCount,
+		taskChan:        make(chan *model.Task, 1000), // 队列长度1000
+		ctx:             ctx,
+		cancel:          cancel,
 	}
 	// 启动工作协程
 	for i := 0; i < workerCount; i++ {
@@ -133,9 +133,9 @@ func (s *TaskService) ListTasks(ctx context.Context, req *model.ListTasksRequest
 	}
 
 	return &model.ListTasksResponse{
-		Data:  tasks,
-		Total: total,
-		Limit: req.Limit,
+		Data:   tasks,
+		Total:  total,
+		Limit:  req.Limit,
 		Offset: req.Offset,
 	}, nil
 }

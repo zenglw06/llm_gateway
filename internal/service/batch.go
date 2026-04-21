@@ -203,7 +203,7 @@ func processSingleRequest(ctx context.Context, router *LLMRouterService, req int
 	default:
 		subResp.Status = "failed"
 		subResp.Error = &model.ErrorResponse{
-			Code:    string(errors.ErrCodeInvalidParams),
+			Code:    fmt.Sprintf("%d", errors.ErrCodeInvalidParams),
 			Message: "unsupported request type",
 		}
 	}

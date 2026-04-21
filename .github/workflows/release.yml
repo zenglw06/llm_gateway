@@ -50,7 +50,7 @@ jobs:
           zip llm-gateway-${{ steps.get_version.outputs.version }}-windows-amd64.zip llm-gateway-windows-amd64.exe README.md LICENSE
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: binaries
           path: |
@@ -70,14 +70,14 @@ jobs:
 
       - name: Generate Changelog
         id: changelog
-        uses: heinrichreimer/github-changelog-generator-action@v2.3
+        uses: heinrichreimer/github-changelog-generator-action@v2.4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           output: CHANGELOG_RELEASE.md
           releaseBranch: main
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           body_path: CHANGELOG_RELEASE.md
           files: |
@@ -91,7 +91,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Docker meta
         id: meta
