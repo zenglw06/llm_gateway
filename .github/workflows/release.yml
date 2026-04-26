@@ -50,7 +50,7 @@ jobs:
           zip llm-gateway-${{ steps.get_version.outputs.version }}-windows-amd64.zip llm-gateway-windows-amd64.exe README.md LICENSE
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: binaries
           path: |
